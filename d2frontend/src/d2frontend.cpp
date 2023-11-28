@@ -259,7 +259,7 @@ void D2Frontend::Init(ros::NodeHandle & nh) {
         sync->registerCallback(boost::bind(&D2Frontend::depthImagesCallback, this, _1, _2));
     } else if (params->camera_configuration == CameraConfig::FOURCORNER_FISHEYE) {
         //Default we accept only horizon-concated image
-        image_sub_single = it_->subscribe(params->image_topics[0], 1000, &D2Frontend::monoImageCallback, this, hints);
+        image_sub_single = it_->subscribe(params->image_topics[0], 5, &D2Frontend::monoImageCallback, this, hints);
     }
     
     keyframe_pub = nh.advertise<swarm_msgs::node_frame>("keyframe", 10);

@@ -30,19 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
 )
 
-set(ONNXRUNTIME_LIB_DIR "/home/xuhao/source/onnxruntime-linux-x64-gpu-1.12.1/lib/" CACHE STRING "Path of ONNXRUNTIME_LIB_DIR")
-set(ONNXRUNTIME_INC_DIR "/home/xuhao/source/onnxruntime-linux-x64-gpu-1.12.1/include/" CACHE STRING "Path of ONNXRUNTIME_INC_DIR")
-
 add_definitions("-D USE_ONNX")
-
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES quadcam_depth_est
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
-)
-
-link_directories(${ONNXRUNTIME_LIB_DIR})
 
 include_directories(
 # include
@@ -62,11 +50,13 @@ add_library(${PROJECT_NAME}
   src/quadcam_depth_est_trt.cpp
 )
 
+
 target_link_libraries(
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${d2frontend_LIBRARIES}
   ${CUDA_LIBRARIES}
+  ${Tegra_LIB_DIR}
   onnxruntime
   nvinfer
   nvinfer_plugin

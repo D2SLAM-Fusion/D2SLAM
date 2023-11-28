@@ -31,9 +31,12 @@ inline void addtoPCL(PointCloudRGB & pcl, Vector3f point, cv::Vec3b color) {
     p.x = point(0);
     p.y = point(1);
     p.z = point(2);
-    p.r = color[2], 255;
-    p.g = color[1], 255;
-    p.b = color[0], 255;
+    // p.r = color[2], 255;
+    // p.g = color[1], 255;
+    // p.b = color[0], 255;
+    p.r = color[2];
+    p.g = color[1];
+    p.b = color[0];
     pcl.points.push_back(p);
 }
 

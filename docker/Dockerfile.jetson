@@ -1,4 +1,4 @@
-FROM hkustswarm/d2slam:jetson_orin_base_35.3.1
+FROM d2slam:jetson_orin_base_35.3.1
 ARG ROS_VERSION=noetic
 ENV SWARM_WS=/root/swarm_ws
 
@@ -16,5 +16,6 @@ RUN   export PATH=/usr/local/cuda/bin:$PATH && \
       catkin config -DCMAKE_BUILD_TYPE=Release \
             --cmake-args -DONNXRUNTIME_LIB_DIR=/usr/local/lib/ \
             -DONNXRUNTIME_INC_DIR=/usr/local/include/onnxruntime/core/session/ \
-            -DTorch_DIR=/usr/local/lib/python3.8/dist-packages/torch/share/cmake/Torch && \
-      catkin build
+            -DTorch_DIR=/usr/local/lib/python3.8/dist-packages/torch/share/cmake/Torch/ \
+            -DTegra_LIB_DIR=/usr/lib/aarch64-linux-gnu/tegra/  && \
+      catkin build  quadcam_depth_est

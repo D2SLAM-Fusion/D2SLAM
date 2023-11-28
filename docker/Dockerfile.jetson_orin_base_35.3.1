@@ -157,3 +157,11 @@ RUN   pip3 install --no-cache https://developer.download.nvidia.com/compute/redi
 
 # Install for TaichiSLAM
 RUN   pip install transformations numpy lcm matplotlib scipy && apt install ros-${ROS_VERSION}-ros-numpy # taichi
+
+#Install spdlog
+RUN   wget https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz && \
+      tar -zxvf v1.12.0.tar.gz && \
+      cd spdlog-1.12.0 && \
+      mkdir build && cd build && \
+      cmake .. && make -j$(nproc) && \
+      make install

@@ -12,10 +12,10 @@ help:
 pc:
 	@docker build  -t d2slam:pc -f ./Dockerfile ..
 
-jetson:
-	@docker build  -t d2slam:jetson -f ./Dockerfile.jetson ..
+jetson_orin:
+	@docker build  -t d2slam:_orin -f ./Dockerfile.jetson ..
 
-jetson_base:
+jetson_nx_base:
 	@docker build  -t d2slam:jetson_base_35.1.0 -f ./Dockerfile.jetson_base_35.1.0 --build-arg USE_PROC=20 ..
 
 jetson_orin_base:
