@@ -14,7 +14,7 @@ height: 240
 pixel_step: 2
 image_step: 2
 max_z: 3
-min_z: 0.3
+min_z: 0.2
 cam_calib_file_path: "/root/swarm_ws/src/D2SLAM/config/quadcam_drone_0/fisheye_cams.yaml"
 fov: 190
 fps: 10
@@ -22,7 +22,9 @@ fps: 10
 image_topic: "/oak_ffc_4p/assemble_image"
 image_type: "raw"
 
-drone_pose_topic: "/d2vins/imu_propogation"
+drone_pose_topic: "/d2vins/imu_propagation"
+
+use_occ_map: false
 
 photometric_calib_numbers: 4
 #TODO: refine this process to make vig calibration more easy to read

@@ -7,10 +7,16 @@ Panels:
         - /Global Options1
         - /VIOGroup1/MarginedCloud1/Autocompute Value Bounds1
         - /Remote1/Path11
+<<<<<<< HEAD
         - /DenseMapping1/PointCloud21/Autocompute Value Bounds1
         - /PointCloud21
       Splitter Ratio: 0.5429141521453857
     Tree Height: 463
+=======
+        - /PointCloud21
+      Splitter Ratio: 0.5429141521453857
+    Tree Height: 690
+>>>>>>> 4cc2815... support occ map
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -40,10 +46,12 @@ Panels:
         - /VIOGroup1/MarginedCloud1/Autocompute Value Bounds1
         - /VINS-Odom1/Shape1
         - /Remote1
-        - /DenseMapping1/PointCloud21
-        - /DenseMapping1/PointCloud21/Autocompute Value Bounds1
       Splitter Ratio: 0.5
+<<<<<<< HEAD
     Tree Height: 441
+=======
+    Tree Height: 437
+>>>>>>> 4cc2815... support occ map
 Preferences:
   PromptSaveOnExit: true
 Toolbars:

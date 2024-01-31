@@ -1,7 +1,7 @@
 #include <swarm_msgs/Pose.h>
 #include <opencv2/cudaimgproc.hpp>
 #include <ros/ros.h>
-#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
 #include "pcl_utils.hpp"
 #pragma once
 namespace camodocal {
@@ -35,7 +35,7 @@ struct VirtualStereoConfig {
 struct OccMapFusionPublisher{
   OccMapFusionPublisher(std::string cam_pose_topic_name, 
     std::string pointcloud_topic_name, ros::NodeHandle & nh){
-    cam_pose_pub_ = nh.advertise<nav_msgs::Odometry>(cam_pose_topic_name, 1);
+    cam_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>(cam_pose_topic_name, 1);
     pointcloud_pub_ = nh.advertise<sensor_msgs::PointCloud2>(pointcloud_topic_name, 1);
   }
   ros::Publisher pointcloud_pub_;

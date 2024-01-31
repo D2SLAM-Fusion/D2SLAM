@@ -46,6 +46,8 @@ QuadcamDepthEstTrt::QuadcamDepthEstTrt(ros::NodeHandle & nh):nh_(nh){
   this->inference_rate_ = std::make_unique<ros::Rate>(ros::Rate(this->fps_));
   this->publish_rate_ = std::make_unique<ros::Rate>(ros::Rate(this->fps_));
   this->cnn_input_rgb_ = config["cnn_input_rgb"].as<bool>();
+  this->use_occ_map_ = config["use_occ_map"].as<bool>();
+
   this->loadVirtualCameras(config,config_dir);
   if(config["image_topic"].IsDefined()){
     this->image_topic_ = config["image_topic"].as<std::string>();
@@ -173,6 +175,8 @@ void QuadcamDepthEstTrt::loadVirtualCameras(YAML::Node & config, std::string con
           undistortors_[cam_idx_l], undistortors_[cam_idx_r], idx_l, idx_r);
       auto att = undistortors_[cam_idx_l]->t[idx_l];
       stereo->extrinsic = raw_cam_extrinsics_[cam_idx_l] * Swarm::Pose(att, Vector3d(0, 0, 0));
+      printf("[QuadCamDepthEst] Load stereo %s, stereo %d(%d):%d(%d) extrinsic: %s\n", 
+          stereo_name.c_str(), cam_idx_l, idx_l, cam_idx_r, idx_r, stereo->extrinsic.toStr().c_str());
       stereo->enable_texture = enable_texture_;
       stereo->initRecitfy(baseline, KD0.first, KD0.second, KD1.first, KD1.second);
       std::string cam_pos_topic = stereo_node["cam_pos_topic"].as<std::string>();
@@ -352,7 +356,6 @@ void QuadcamDepthEstTrt::inferrenceThread(){
         this->inference_rate_->sleep();
         continue;
       }
-
       for (auto stereo : this->virtual_stereos_){
         input_tensors[stereo->stereo_id] = input_tensors_[stereo->stereo_id];
       }
@@ -378,13 +381,11 @@ void QuadcamDepthEstTrt::inferrenceThread(){
 void QuadcamDepthEstTrt::publishThread(){
   //TODO: publish pointcloud and do visualization
   while(publish_thread_running_){
-    printf("[QuadcamDepthEstTrt]: publish thread running\n");
     //if output_tensors_ is empty, wait for next loop
     if (this->output_tensors_[0].empty()){
       this->publish_rate_->sleep();
       continue;
     }
-
     //copy data to local
     if (output_tensors_mutex_.try_lock()){
       for (auto stereo : this->virtual_stereos_){
@@ -408,40 +409,38 @@ void QuadcamDepthEstTrt::publishThread(){
       }
     }
     //prepeare pcl
-
-    #ifndef OCC_MAP
-    if (pcl_ == nullptr){
-      printf("[QuadcamDepthEstTrt]: pcl is nullptr\n");
-      this->publish_rate_->sleep();
-      continue;
+    if(!this->use_occ_map_){
+      if (pcl_ == nullptr){
+        printf("[QuadcamDepthEstTrt]: pcl is nullptr\n");
+        this->publish_rate_->sleep();
+        continue;
+      }
+      pcl_conversions::toPCL(raw_image_header_.stamp, pcl_->header.stamp);
+      pcl_->header.frame_id = "imu";
+      pcl_->points.clear();
+      //TODO: if enable texture 
+      for (auto stereo : this->virtual_stereos_){
+        cv::Mat points;
+        cv::reprojectImageTo3D(publish_disparity_[stereo->stereo_id], 
+          points, stereo->getStereoPose(), 3);
+        addPointsToPCL(points,recity_images_for_show_and_texture_[stereo->cam_idx_a][stereo->cam_idx_a_right_half_id], 
+          stereo->extrinsic, *this->pcl_, this->pixel_step_, this->min_z_, this->max_z_);  
+      }
+      
+      pub_pcl_.publish(*pcl_);
+    } else {
+      for (auto stereo : this->virtual_stereos_){
+        PointCloud * pcl = new PointCloud();
+        pcl_conversions::toPCL(raw_image_header_.stamp, pcl->header.stamp);
+        pcl->header.frame_id = "imu";
+        cv::Mat points;
+        cv::reprojectImageTo3D(publish_disparity_[stereo->stereo_id], 
+          points, stereo->getStereoPose(), 3);
+        addPointsToPCL(points,recity_images_for_show_and_texture_[stereo->cam_idx_a][stereo->cam_idx_a_right_half_id], 
+          stereo->extrinsic, *pcl, this->pixel_step_, this->min_z_, this->max_z_);
+        stereo->publishToOCCMapFusion(raw_image_header_.stamp,this->drone_pose_, pcl);
+      }
     }
-    pcl_conversions::toPCL(raw_image_header_.stamp, pcl_->header.stamp);
-    pcl_->header.frame_id = "imu";
-    pcl_->points.clear();
-    //TODO: if enable texture 
-    for (auto stereo : this->virtual_stereos_){
-      cv::Mat points;
-      cv::reprojectImageTo3D(publish_disparity_[stereo->stereo_id], 
-        points, stereo->getStereoPose(), 3);
-      addPointsToPCL(points,recity_images_for_show_and_texture_[stereo->cam_idx_a][stereo->cam_idx_a_right_half_id], 
-        stereo->extrinsic, *this->pcl_, this->pixel_step_, this->min_z_, this->max_z_);  
-    }
-    pub_pcl_.publish(*pcl_);
-    #else
-    for (auto stereo : this->virtual_stereos_){
-      PointCloud * pcl = new PointCloud();
-      pcl_conversions::toPCL(raw_image_header_.stamp, pcl->header.stamp);
-      pcl->header.frame_id = "imu";
-      cv::Mat points;
-      cv::reprojectImageTo3D(publish_disparity_[stereo->stereo_id], 
-        points, stereo->getStereoPose(), 3);
-      addPointsToPCL(points,recity_images_for_show_and_texture_[stereo->cam_idx_a][stereo->cam_idx_a_right_half_id], 
-        stereo->extrinsic, *pcl, this->pixel_step_, this->min_z_, this->max_z_);
-
-      stereo->publishToOCCMapFusion(raw_image_header_.stamp,this->drone_pose_, pcl);
-    }
-
-    #endif
     this->publish_rate_->sleep();
   }
   return ;

@@ -78,7 +78,8 @@ class QuadcamDepthEstTrt{
   double max_z_ = 10;
   int image_count_ = 0;
   bool cnn_input_rgb_ = false;
-
+  bool use_occ_map_ = false;
+  
   int32_t fps_ = 10;
   std::string trt_engine_path_;
   
