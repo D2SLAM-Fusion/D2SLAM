@@ -4,6 +4,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/common/transforms.h>
 #include <d2frontend/d2frontend_params.h>
 #include "../include/pcl_utils.hpp"
 
@@ -416,7 +417,7 @@ void QuadcamDepthEstTrt::publishThread(){
         continue;
       }
       pcl_conversions::toPCL(raw_image_header_.stamp, pcl_->header.stamp);
-      pcl_->header.frame_id = "imu";
+      pcl_->header.frame_id = "world";
       pcl_->points.clear();
       //TODO: if enable texture 
       for (auto stereo : this->virtual_stereos_){
@@ -426,8 +427,9 @@ void QuadcamDepthEstTrt::publishThread(){
         addPointsToPCL(points,recity_images_for_show_and_texture_[stereo->cam_idx_a][stereo->cam_idx_a_right_half_id], 
           stereo->extrinsic, *this->pcl_, this->pixel_step_, this->min_z_, this->max_z_);  
       }
-      
-      pub_pcl_.publish(*pcl_);
+      PointCloud * trans_pcl = new PointCloud();
+      pcl::transformPointCloud(*pcl_, *trans_pcl, this->drone_pose_.toMatrix());
+      pub_pcl_.publish(*trans_pcl);
     } else {
       for (auto stereo : this->virtual_stereos_){
         PointCloud * pcl = new PointCloud();
