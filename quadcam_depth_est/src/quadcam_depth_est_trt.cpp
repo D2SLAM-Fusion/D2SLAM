@@ -53,6 +53,10 @@ QuadcamDepthEstTrt::QuadcamDepthEstTrt(ros::NodeHandle & nh):nh_(nh){
   if(config["image_format"].IsDefined()){
     this->image_format_ = config["image_format"].as<std::string>();
   }
+  if(config["drone_pose_topic"].IsDefined()){
+    this->drone_pose_topic_ = config["drone_pose_topic"].as<std::string>();
+  }
+
   //hitnet
   for(int i = 0 ; i<kCamerasNum; i++){
     this->output_tensors_[i] = cv::Mat(this->height_,this->width_,CV_32F);
@@ -66,6 +70,8 @@ QuadcamDepthEstTrt::QuadcamDepthEstTrt(ros::NodeHandle & nh):nh_(nh){
   image_transport::TransportHints hints(this->image_format_, ros::TransportHints().tcpNoDelay(true));
   image_transport_ = new image_transport::ImageTransport(nh_);
   image_sub_ = image_transport_->subscribe(this->image_topic_, 1, &QuadcamDepthEstTrt::quadcamImageCb, this, hints);
+  drone_pose_sub_ = nh_.subscribe(this->drone_pose_topic_, 10, &QuadcamDepthEstTrt::dronePoseCb, this);
+
   if (enable_texture_){
     pcl_color_ = new PointCloudRGB();
     pcl_color_->points.reserve(virtual_stereos_.size() * width_ * height_);
@@ -169,6 +175,9 @@ void QuadcamDepthEstTrt::loadVirtualCameras(YAML::Node & config, std::string con
       stereo->extrinsic = raw_cam_extrinsics_[cam_idx_l] * Swarm::Pose(att, Vector3d(0, 0, 0));
       stereo->enable_texture = enable_texture_;
       stereo->initRecitfy(baseline, KD0.first, KD0.second, KD1.first, KD1.second);
+      std::string cam_pos_topic = stereo_node["cam_pos_topic"].as<std::string>();
+      std::string pointcloud_topic = stereo_node["pointcloud_topic"].as<std::string>();
+      stereo->initPublisher(cam_pos_topic, pointcloud_topic, nh_);
       virtual_stereos_.emplace_back(stereo);
     }
     printf("[QuadCamDepthEst] Init virtual cameras successfully\n");
@@ -226,6 +235,11 @@ void QuadcamDepthEstTrt::quadcamImageCb(const sensor_msgs::ImageConstPtr & image
     this->raw_image_header_ = images->header;
     raw_image_mutex_.unlock();
   }
+  return;
+}
+
+void QuadcamDepthEstTrt::dronePoseCb(const nav_msgs::Odometry::ConstPtr& msg){
+  this->drone_pose_ = Swarm::Pose(msg->pose.pose);
   return;
 }
 
@@ -364,6 +378,7 @@ void QuadcamDepthEstTrt::inferrenceThread(){
 void QuadcamDepthEstTrt::publishThread(){
   //TODO: publish pointcloud and do visualization
   while(publish_thread_running_){
+    printf("[QuadcamDepthEstTrt]: publish thread running\n");
     //if output_tensors_ is empty, wait for next loop
     if (this->output_tensors_[0].empty()){
       this->publish_rate_->sleep();
@@ -393,6 +408,8 @@ void QuadcamDepthEstTrt::publishThread(){
       }
     }
     //prepeare pcl
+
+    #ifndef OCC_MAP
     if (pcl_ == nullptr){
       printf("[QuadcamDepthEstTrt]: pcl is nullptr\n");
       this->publish_rate_->sleep();
@@ -410,6 +427,21 @@ void QuadcamDepthEstTrt::publishThread(){
         stereo->extrinsic, *this->pcl_, this->pixel_step_, this->min_z_, this->max_z_);  
     }
     pub_pcl_.publish(*pcl_);
+    #else
+    for (auto stereo : this->virtual_stereos_){
+      PointCloud * pcl = new PointCloud();
+      pcl_conversions::toPCL(raw_image_header_.stamp, pcl->header.stamp);
+      pcl->header.frame_id = "imu";
+      cv::Mat points;
+      cv::reprojectImageTo3D(publish_disparity_[stereo->stereo_id], 
+        points, stereo->getStereoPose(), 3);
+      addPointsToPCL(points,recity_images_for_show_and_texture_[stereo->cam_idx_a][stereo->cam_idx_a_right_half_id], 
+        stereo->extrinsic, *pcl, this->pixel_step_, this->min_z_, this->max_z_);
+
+      stereo->publishToOCCMapFusion(raw_image_header_.stamp,this->drone_pose_, pcl);
+    }
+
+    #endif
     this->publish_rate_->sleep();
   }
   return ;

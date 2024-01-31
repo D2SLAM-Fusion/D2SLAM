@@ -140,6 +140,34 @@ void VirtualStereo::initRecitfy(const Swarm::Pose & baseline, cv::Mat K0, cv::Ma
     cuda_rmap_2.upload(rmap_2);
 }
 
+void VirtualStereo::initPublisher (std::string cam_pose_topic_name, 
+    std::string pointcloud_topic_name, ros::NodeHandle & nh){
+    occ_map_fusion_pub_ = new OccMapFusionPublisher(cam_pose_topic_name, pointcloud_topic_name, nh);
+    return;
+}
+
+void VirtualStereo::publishToOCCMapFusion(ros::Time time_stamp, Swarm::Pose & pose, PointCloud * pcl){
+    if (occ_map_fusion_pub_ == nullptr){
+        printf("[Error]occ_map_fusion_pub_ is nullptr\n");
+        return;
+    }
+    nav_msgs::Odometry cam_pose;
+    cam_pose.header.frame_id = "world";
+    cam_pose.header.stamp = time_stamp;
+    Swarm::Pose camera_pos = this->extrinsic * pose;
+    cam_pose.pose.pose.position.x = camera_pos.pos()(0);
+    cam_pose.pose.pose.position.y = camera_pos.pos()(1);
+    cam_pose.pose.pose.position.z = camera_pos.pos()(2);
+    Eigen::Quaterniond q(camera_pos.R());
+    cam_pose.pose.pose.orientation.x = q.x();
+    cam_pose.pose.pose.orientation.y = q.y();
+    cam_pose.pose.pose.orientation.z = q.z();
+    cam_pose.pose.pose.orientation.w = q.w();
+    occ_map_fusion_pub_->cam_pose_pub_.publish(cam_pose);
+    occ_map_fusion_pub_->pointcloud_pub_.publish(*pcl);
+    printf("[Debug]publishToOCCMapFusion\n");
+}
+
 std::pair<cv::Mat, cv::Mat> VirtualStereo::estimatePointsViaRaw(const cv::Mat & left, const cv::Mat & right, const cv::Mat & left_color, bool show) {
     auto ret = estimateDisparityViaRaw(left, right, left_color, show);
     cv::Mat points;
