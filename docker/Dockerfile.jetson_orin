@@ -3,7 +3,7 @@ ARG ROS_VERSION=noetic
 ENV SWARM_WS=/root/swarm_ws
 
 #Build D2SLAM
-RUN mkdir -p ${SWARM_WS}/src/ && \
+RUN   mkdir -p ${SWARM_WS}/src/ && \
       cd ${SWARM_WS}/src/ && \
       git clone https://github.com/HKUST-Swarm/swarm_msgs.git -b D2SLAM && \
       git clone https://github.com/HKUST-Swarm/sync_bag_player.git && \
@@ -16,6 +16,7 @@ RUN   export PATH=/usr/local/cuda/bin:$PATH && \
       catkin config -DCMAKE_BUILD_TYPE=Release \
             --cmake-args -DONNXRUNTIME_LIB_DIR=/usr/local/lib/ \
             -DONNXRUNTIME_INC_DIR=/usr/local/include/onnxruntime/core/session/ \
-            -DTorch_DIR=/usr/local/lib/python3.8/dist-packages/torch/share/cmake/Torch/ \
-            -DTegra_LIB_DIR=/usr/lib/aarch64-linux-gnu/tegra/  && \
-      catkin build  quadcam_depth_est
+            -DTorch_DIR=/usr/local/lib/python3.8/dist-packages/torch/share/cmake/Torch && \
+      catkin build &&\
+      echo "source ${SWARM_WS}/devel/setup.bash" >> ~/.bashrc
+      

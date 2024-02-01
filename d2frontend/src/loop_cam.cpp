@@ -8,7 +8,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <d2frontend/d2featuretracker.h>
 #include <d2common/fisheye_undistort.h>
-
+#include <spdlog/spdlog.h>
 using namespace std::chrono;
 
 double TRIANGLE_THRES;
@@ -216,18 +216,46 @@ VisualImageDescArray LoopCam::processStereoframe(const StereoFrame & msg) {
             }
         }
     } else if(config_.nn_engine_type == EngineType::TRT){
-        bundleGenerateImagesDescriptor(msg, visual_array);
-        bundleGenerateNetvladDescriptor(msg, visual_array);
-    }
+        // D2Common::Utility::TicToc tic;
+        if (params->loopcamconfig->superpoint_max_num > 0){ // use SP as main feature points
+            bundleGenerateImagesDescriptor(msg, visual_array);
+            bundleGenerateNetvladDescriptor(msg, visual_array);
+        } else { //use good feature to track as main feature 
+            std::vector<cv::Mat> input_img_vec;
+            //undistort
+            if (config_.enable_undistort_image){
+                for (unsigned int i = 0; i < msg.left_images.size(); i ++) {
+                    cv::Mat undist = msg.left_images[i];
+                    if (config_.enable_undistort_image) {
+                        undist = cv::Mat(undistortors[i]->undist_id_cuda(undist, 0, true));
+                    }
+                    input_img_vec.push_back(undist);
+                }
+            } else {
+                    input_img_vec = msg.left_images;
+            }
+            //set visual_arry_info information withought any landmark. Tracking will extrack good feature
+            for (int i =0; i < msg.left_images.size(); i++){
+                visual_array.images[i].stamp = msg.stamp.toSec();
+                visual_array.images[i].camera_id = msg.left_camera_ids[i];
+                visual_array.images[i].camera_index = msg.left_camera_indices[i];
+                visual_array.images[i].drone_id = self_id;
+                visual_array.images[i].raw_image = input_img_vec[i];
+            }
+        }
+    } 
     
-    tt_sum+= tt.toc();
-    t_count+= 1;
-    printf("[D2Frontend::LoopCam] KF Count %d loop_cam cost avg %.1fms cur %.1fms\n", kf_count, tt_sum/t_count, tt.toc());
-
     visual_array.frame_id = msg.keyframe_id;
     visual_array.pose_drone = msg.pose_drone;
     visual_array.drone_id = self_id;
 
+    tt_sum+= tt.toc();
+    t_count+= 1;
+    if (params->enbale_detailed_output){
+        spdlog::info("[D2Frontend:extrack superpoint or undistort] KF Count {} loop_cam cost avg {} ms cur {}ms", 
+            kf_count, tt_sum/t_count, tt.toc());
+    }
+    
     if (config_.show && !_show.empty()) {
         char text[100] = {0};
         char PATH[100] = {0};
@@ -253,8 +281,8 @@ VisualImageDesc LoopCam::generateImageDescriptor(const StereoFrame & msg, int vc
     TicToc tt;
     if (config_.enable_undistort_image) {
         undist = cv::Mat(undistortors[vcam_id]->undist_id_cuda(undist, 0, true));
-        char text[100] = {0};
         #ifdef DEBUG
+        char text[100] = {0};
         sprintf(text, "Frame %d: %ld Features", kf_count, msg.keyframe_id);
         cv::imshow(text, undist);
         cv::waitKey(0);
@@ -314,6 +342,7 @@ VisualImageDesc LoopCam::generateImageDescriptor(const StereoFrame & msg, int vc
 
 int32_t LoopCam::bundleGenerateImagesDescriptor(const StereoFrame & msg, VisualImageDescArray & viokf) {
     std::vector<cv::Mat> input_img_vec;
+    // D2Common::Utility::TicToc tic;
     if (config_.enable_undistort_image){
         for (unsigned int i = 0; i < msg.left_images.size(); i ++) {
             cv::Mat undist = msg.left_images[i];
@@ -325,9 +354,17 @@ int32_t LoopCam::bundleGenerateImagesDescriptor(const StereoFrame & msg, VisualI
     } else {
         input_img_vec = msg.left_images;
     }
+    // double cost = tic.toc();
+    // printf("[D2Frontend::LoopCam] undist image cost %.1fms\n", cost);
+    // tic.tic();
     superpoint_trt_->doInference(input_img_vec);
+    // cost = tic.toc();
+    // printf("[D2Frontend::LoopCam] superpoint trt cost %.1fms\n", cost);
+    // tic.tic();
     superpoint_trt_->getOuput(self_id, msg, viokf);
-    printf("[Debug] Supper poiunt trt get output\n");
+    // cost = tic.toc();
+    // printf("[D2Frontend::LoopCam] superpoint trt get output cost %.1fms\n", cost);
+    // tic.tic();
     //process keypoints to landmark
     for (int idx = 0; idx<viokf.images.size(); idx++){
         auto && vframe = viokf.images[idx];
@@ -352,7 +389,8 @@ int32_t LoopCam::bundleGenerateImagesDescriptor(const StereoFrame & msg, VisualI
         }
         vframe.raw_image = input_img_vec[idx];
     }
-    printf("[Debug] Supper poiunt trt get output\n");
+    // cost = tic.toc();
+    // printf("[D2Frontend::LoopCam] process keypoints to landmark cost %.1fms\n", cost);
     return 0;
 }
 

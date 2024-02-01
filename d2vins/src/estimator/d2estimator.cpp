@@ -47,6 +47,30 @@ void D2Estimator::init(ros::NodeHandle & nh, D2VINSNet * net) {
     }
 }
 
+void D2Estimator::init(ros::NodeHandle & nh) {
+    state.init(params->camera_extrinsics, params->td_initial);
+    visual.init(nh, this);
+    printf("[D2Estimator::init] init done estimator on drone %d\n", self_id);
+    for (auto cam_id : state.getAvailableCameraIds()) {
+        Swarm::Pose ext = state.getExtrinsic(cam_id);
+        printf("[D2VINS::D2Estimator] extrinsic %d: %s\n", cam_id, ext.toStr().c_str());
+    }
+    vinsnet = nullptr;
+    vinsnet->DistributedVinsData_callback = [&](DistributedVinsData msg) {
+        onDistributedVinsData(msg);
+    };
+    vinsnet->DistributedSync_callback = [&](int drone_id, int signal, int64_t token) {
+        onSyncSignal(drone_id, signal, token);
+    };
+
+    imu_bufs[self_id] = IMUBuffer();
+    if (params->estimation_mode == D2Common::DISTRIBUTED_CAMERA_CONSENUS) {
+        solver = new D2VINSConsensusSolver(this, &state, sync_data_receiver, *params->consensus_config, solve_token);
+    } else {
+        solver = new CeresSolver(&state, params->ceres_options);
+    }
+}
+
 void D2Estimator::inputImu(IMUData data) {
     IMUData last = data;
     if (imu_bufs[self_id].size() > 0 ) {
@@ -130,6 +154,7 @@ std::pair<bool, Swarm::Pose> D2Estimator::initialFramePnP(const VisualImageDescA
 
 VINSFrame * D2Estimator::addFrame(VisualImageDescArray & _frame) {
     //First we init corresponding pose for with IMU
+    D2Common::Utility::TicToc tic;
     auto & last_frame = state.lastFrame();
     auto motion_predict = getMotionPredict(_frame.stamp); //Redo motion predict for get latest initial pose
     VINSFrame frame(_frame, motion_predict.second, last_frame);
@@ -146,14 +171,22 @@ VINSFrame * D2Estimator::addFrame(VisualImageDescArray & _frame) {
         }
         frame.odom = odom_imu;
     }
+    // spdlog::warn("[D2Estimator::addFrame@{}] init pose time: {:.2f}ms\n", self_id, tic.toc());
+
+
     frame.odom.stamp = _frame.stamp;
     frame.reference_frame_id = state.getReferenceFrameId();
 
+    tic.tic();
     auto frame_ret = state.addFrame(_frame, frame);
+    // spdlog::warn("[D2Estimator::addFrame@{}] addFrame time: {:.2f}ms\n", self_id, tic.toc());
+
     //Clear old frames after add
+    tic.tic();
     if (params->estimation_mode != D2Common::DISTRIBUTED_CAMERA_CONSENUS) {
         margined_landmarks = state.clearUselessFrames(isInitialized()); // Only marginlization when solved
     }
+    // spdlog::warn("[D2Estimator::addFrame@{}] clearUselessFrames time: {:.2f}ms\n", self_id, tic.toc());
     _frame.setTd(state.getTd(_frame.drone_id));
     //Assign IMU and initialization to VisualImageDescArray for broadcasting.
     _frame.imu_buf = motion_predict.second.first;
@@ -161,11 +194,11 @@ VINSFrame * D2Estimator::addFrame(VisualImageDescArray & _frame) {
     _frame.Ba = frame.Ba;
     _frame.Bg = frame.Bg;
     _frame.reference_frame_id = frame.reference_frame_id;
-
     if (params->verbose || params->debug_print_states) {
         printf("[D2VINS::D2Estimator] Initialize VINSFrame with %d: %s\n", 
             params->init_method, frame.toStr().c_str());
     }
+
     return frame_ret;
 }
 
@@ -289,6 +322,7 @@ void D2Estimator::inputRemoteImage(VisualImageDescArray & frame) {
 bool D2Estimator::inputImage(VisualImageDescArray & _frame) {
     //Guard 
     const Guard lock(frame_mutex);
+    D2Common::Utility::TicToc tic;
     if(!initFirstPoseFlag) {
         printf("[D2VINS::D2Estimator] tryinitFirstPose imu buf %ld\n", imu_bufs[self_id].size());
         initFirstPoseFlag = tryinitFirstPose(_frame);
@@ -307,16 +341,25 @@ bool D2Estimator::inputImage(VisualImageDescArray & _frame) {
         usleep(2000);
         printf("[D2VINS::D2Estimator] wait for imu...\n");
     }
-
+    tic.tic();
     auto frame = addFrame(_frame);
+    if (params->enbale_detailed_output){
+        spdlog::info("[D2Estimator::inputImage@{}] addFrame time: {:.2f}ms\n", self_id, tic.toc());
+    }
+    tic.tic();
     if (state.size() >= params->min_solve_frames && params->estimation_mode != D2Common::DISTRIBUTED_CAMERA_CONSENUS) {
         solveNonDistrib();
     }
+    if (params->enbale_detailed_output){
+        spdlog::info("[D2Estimator::inputImage@{}] solveNonDistrib time: {:.2f}ms\n", self_id, tic.toc());
+    }
+    
+    tic.tic();
     addSldWinToFrame(_frame);
     frame_count ++;
     updated = true;
     if (isInitialized())
-    {
+    {   
         visual.pubFrame(frame);
     }
     return true;
@@ -367,7 +410,7 @@ void D2Estimator::setStateProperties() {
 
     if (!params->estimate_td || state.size() < params->max_sld_win_size || 
                 state.lastFrame().odom.vel().norm() < params->estimate_extrinsic_vel_thres) {
-        printf("[D2Estimator::setStateProperties@%d] set td to fixed sld_size %d/%d \n", self_id, state.size(), params->max_sld_win_size);
+        spdlog::info("[D2Estimator::setStateProperties@{}] set td to fixed sld_size {}/{} \n", self_id, state.size(), params->max_sld_win_size);
         problem.AddParameterBlock(state.getTdState(self_id), 1);
         problem.SetParameterBlockConstant(state.getTdState(self_id));
     }
@@ -599,17 +642,22 @@ void D2Estimator::solveNonDistrib() {
     sum_cost += report.final_cost;
 
     if (params->enable_perf_output) {
-        spdlog::info("[D2VINS] average time %.1fms, average time of iter: %.1fms, average iteration %.3f, average cost %.3f\n", 
+        spdlog::info("[D2VINS] Solver use average time {}ms, average time of iter: {}ms, average iteration {}, average cost {}", 
             sum_time*1000/solve_count, sum_time*1000/sum_iteration, sum_iteration/solve_count, sum_cost/solve_count);
     }
 
     if (params->estimation_mode < D2Common::SERVER_MODE) {
         auto last_odom = state.lastFrame().odom;
-        spdlog::info("C{} landmarks {} odom {} td {:.1f}ms opti_time {:.1f}ms", solve_count, 
+        if (params->debug_print_states){
+            spdlog::info("C{} landmarks {} odom {} td {:.1f}ms opti_time {:.1f}ms", solve_count, 
             current_landmark_num, last_odom.toStr(), state.td*1000, report.total_time*1000);
+        }
+
     } else {
-        spdlog::info("C{} landmarks {} td {:1.f}ms opti_time {:.1f}ms", solve_count, 
+        if (params->debug_print_states){
+            spdlog::info("C{} landmarks {} td {:.1f}ms opti_time {:.1f}ms", solve_count, 
             current_landmark_num, state.td*1000, report.total_time*1000);
+        }
     }
 
     // Reprogation
@@ -939,7 +987,7 @@ std::pair<Swarm::Odometry, std::pair<IMUBuffer, int>> D2Estimator::getMotionPred
     auto ret = imu_bufs.at(self_id).periodIMU(last_frame.imu_buf_index, stamp + state.td);
     auto _imu = ret.first;
     auto index = ret.second;
-    if (fabs(_imu.size()/(stamp - last_frame.stamp) - params->IMU_FREQ) > 15) {
+    if (fabs(_imu.size()/(stamp - last_frame.stamp) - params->IMU_FREQ) > 20) {
         printf("\033[0;31m[D2VINS::D2Estimator] Local IMU error freq: %.3f start_t %.3f/%.3f end_t %.3f/%.3f\033[0m\n", 
             _imu.size()/(stamp - last_frame.stamp),
             last_frame.stamp + state.td, _imu[0].t, stamp + state.td, _imu[_imu.size()-1].t);

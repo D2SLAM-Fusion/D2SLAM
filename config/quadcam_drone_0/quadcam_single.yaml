@@ -10,8 +10,8 @@ image0_topic: "/oak_ffc_4p/assemble_image"
 is_compressed_images: 0
 
 imu_freq: 500
-image_freq: 25
-frame_step: 2
+image_freq: 20
+frame_step: 3
 
 #Camera configuration
 camera_configuration: 3  #STEREO_PINHOLE = 0, STEREO_FISHEYE = 1, PINHOLE_DEPTH = 2, FOURCORNER_FISHEYE = 3
@@ -20,8 +20,8 @@ image_width: 1280
 image_height: 720
 enable_undistort_image: 1
 undistort_fov: 180
-width_undistort: 600
-height_undistort: 300
+width_undistort: 300 #600
+height_undistort: 150 #300 好像也可以
 photometric_calib: "mask_1.png"
 avg_photometric: 0.7
 
@@ -35,7 +35,7 @@ double_counting_common_feature: 0
 min_inv_dep: 0.01 #100 meter away.
 
 #optimization parameters
-max_solver_time: 0.08 # max solver itration time (ms), to guarantee real time
+max_solver_time: 0.04 # max solver itration time (ms), to guarantee real time 0.04 normal running
 max_num_iterations: 8   # max solver itrations, to guarantee real time
 consensus_max_steps: 4
 timout_wait_sync: 100
@@ -46,6 +46,7 @@ relaxation_alpha: 0.
 consensus_sync_for_averaging: 0
 consensus_sync_to_start: 0 #Is sync on start of the solving..
 consensus_trigger_time_err_us: 100
+
 
 #depth fusing
 depth_far_thres: 3.0 # The max depth in frontend
@@ -62,12 +63,12 @@ init_method: 0 #0 IMU, 1 PnP
 depth_estimate_baseline: 0.03
 
 #sliding window
-max_sld_win_size: 11
+max_sld_win_size: 10
 landmark_estimate_tracks: 4 #when use depth or stereo, 3 is OK.
 min_solve_frames: 6
 
 #solver
-multiple_thread: 1
+multiple_thread: 4
 
 #outlier rejection
 thres_outlier : 10.0
@@ -85,11 +86,21 @@ remove_base_when_margin_remote: 2
 #  set to 0 those measurements (which on a landmark's baseFrame is not been removed) will be ignore.
 
 #feature tracker parameters
-max_cnt: 150            # max feature number in feature tracking
-max_superpoint_cnt: 130 # max feature extraction by superpoint //oringal super 150
+max_cnt: 50            # max feature number in feature tracking
+max_superpoint_cnt: 0 # max feature extraction by superpoint //oringal super 150
 max_solve_cnt: 200
 check_essential: 0
 enable_lk_optical_flow: 1 #enable lk opticalflow featuretrack to enhance ego-motion estimation.
+
+# dynamic_superpoint: 1 # dynmiac modify the threshold of superpoint
+# dynamic_superpoint_thres: 0.7 # next time extract 0.7*best_score points
+# dynamic_superpoint_min_thres: 0.1 # at least extract dynamic_superpoint_min_thres*max_cnt points, if can not meet, degree frame +1
+# dynamic_superpoint_degree_frames: 10 # if 10 frames do not have enough features, then dynamic modify the threshold to current_threadhold * degree_percent 
+# dynamic_superpoint_degree_percent: 0.5 # next time extract 0.1*best_score points
+
+use_gpu_feature_tracking: 0 # 1 use gpu, 0 use cpu
+use_gpu_good_feature_extraction: 0 # 1 use gpu, 0 use cpu
+
 remote_min_match_num: 20
 enable_superglue_local: 0
 enable_superglue_remote: 0
@@ -106,9 +117,8 @@ enable_pca_superpoint: 1
 superpoint_pca_dims: 64
 
 nn_engine_type: 1 # 0 use onnx; 1 use tensorrt raw engine
-superpoint_trt_path: "/root/swarm_ws/src/D2SLAM/models/superpoint_v1_dyn_size_onnx_300x600.trt"
-moblieNetVlad_trt_path: "/root/swarm_ws/src/D2SLAM/models/mobilenetvlad_300x600_onnx.trt"
-
+superpoint_trt_path: "/root/swarm_ws/src/D2SLAM/models/superpoint_v1_dyn_size_onnx_200_300.trt"
+moblieNetVlad_trt_path: "/root/swarm_ws/src/D2SLAM/models/mobilenetvlad_dyn_size_onnx_200_300.trt"
 
 #xuhao quadcam
 acc_n: 0.1          # accelerometer measurement noise standard deviation. #0.2   0.04
@@ -147,5 +157,7 @@ output_path: "/root/output/"
 debug_print_sldwin: 0
 debug_print_states: 0
 enable_perf_output: 0
+enbale_detailed_output: 0 # output feature extraction time, feature tracking time, feature matching time 
+enbale_speed_ouptut: 1 # output Frontend use time, backedn use time
 debug_write_margin_matrix: 0
 show_track_id: 0

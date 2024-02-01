@@ -1,5 +1,8 @@
 #include <swarm_msgs/Pose.h>
 #include <opencv2/cudaimgproc.hpp>
+#include <ros/ros.h>
+#include <geometry_msgs/PoseStamped.h>
+#include "pcl_utils.hpp"
 #pragma once
 namespace camodocal {
 class Camera;
@@ -29,6 +32,15 @@ struct VirtualStereoConfig {
     int mode = 0;
 };
 
+struct OccMapFusionPublisher{
+  OccMapFusionPublisher(std::string cam_pose_topic_name, 
+    std::string pointcloud_topic_name, ros::NodeHandle & nh){
+    cam_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>(cam_pose_topic_name, 1);
+    pointcloud_pub_ = nh.advertise<sensor_msgs::PointCloud2>(pointcloud_topic_name, 1);
+  }
+  ros::Publisher pointcloud_pub_;
+  ros::Publisher cam_pose_pub_;
+};
 
 class VirtualStereo {
   protected:
@@ -50,6 +62,7 @@ class VirtualStereo {
     //Rectify the images from pinhole images.
     bool input_is_stereo = false;
     cv::cuda::GpuMat inv_vingette_l, inv_vingette_r;
+    OccMapFusionPublisher * occ_map_fusion_pub_ = nullptr;
   public:
     bool enable_texture = true;
     int cam_idx_a = 0;
@@ -57,7 +70,6 @@ class VirtualStereo {
     int cam_idx_a_right_half_id = 1;
     int cam_idx_b_left_half_id = 0;
     int stereo_id = 0;
-
     Swarm::Pose extrinsic;
     std::vector<cv::cuda::GpuMat> rectifyImage(const cv::Mat & left, const cv::Mat & right);
     int32_t rectifyImage(const cv::Mat & left, const cv::Mat & right,
@@ -69,6 +81,8 @@ class VirtualStereo {
         const cv::Mat & left_color, bool show = false);
     std::pair<cv::Mat, cv::Mat> estimatePointsViaRaw(const cv::Mat & left, const cv::Mat & right, 
         const cv::Mat & left_color, bool show = false);
+
+    
     
     cv::Mat getStereoPose(){
         return this->Q;
@@ -98,5 +112,9 @@ class VirtualStereo {
         HitnetONNX* _hitnet, CREStereoONNX * _crestereo);
     void initVingette(const cv::Mat & _inv_vingette_l, const cv::Mat & _inv_vingette_r);
     void initRecitfy(const Swarm::Pose & baseline, cv::Mat K0, cv::Mat D0, cv::Mat K1, cv::Mat D1);
+    void initPublisher (std::string cam_pose_topic_name, 
+      std::string pointcloud_topic_name, ros::NodeHandle & nh);
+    void publishToOCCMapFusion(ros::Time time_stamp, Swarm::Pose & pose, PointCloud * pcl);
+    
 };
 }

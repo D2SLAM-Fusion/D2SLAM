@@ -11,7 +11,9 @@
 #include <image_transport/subscriber_filter.h>
 #include <message_filters/time_synchronizer.h>
 #include <thread>
+#include <nav_msgs/Odometry.h>
 #include "hitnet.hpp"
+#define OCC_MAP
 
 namespace D2QuadCamDepthEst{
 const int32_t kCamerasNum = 4;
@@ -27,8 +29,8 @@ class QuadcamDepthEstTrt{
   void stopAllService();
  private:
   void quadcamImageCb(const sensor_msgs::ImageConstPtr & images);
+  void dronePoseCb(const nav_msgs::Odometry::ConstPtr& msg);
   void loadVirtualCameras(YAML::Node & config, std::string configPath);
-  
   void rawImageProcessThread();
   void inferrenceThread();
   void publishThread();
@@ -56,6 +58,9 @@ class QuadcamDepthEstTrt{
   image_transport::ImageTransport * image_transport_;
   image_transport::Subscriber image_sub_;
 
+  ros::Subscriber drone_pose_sub_;
+  Swarm::Pose drone_pose_ = Swarm::Pose::Identity();
+
   ros::Publisher pub_pcl_;
   PointCloud * pcl_ = nullptr;
   PointCloudRGB * pcl_color_ = nullptr;
@@ -73,7 +78,8 @@ class QuadcamDepthEstTrt{
   double max_z_ = 10;
   int image_count_ = 0;
   bool cnn_input_rgb_ = false;
-
+  bool use_occ_map_ = false;
+  
   int32_t fps_ = 10;
   std::string trt_engine_path_;
   
@@ -92,6 +98,7 @@ class QuadcamDepthEstTrt{
   std::string image_format_ = "raw";
   std::string image_topic_ = "/oak_ffc_4p/assemble_image";
   const std::string kPointCloudTopic_ = "/depth_estimation/pointcloud";
+  std::string drone_pose_topic_ = "/drone_pose";
 
   //buffers to store images double buffe
   cv::Mat raw_image_;

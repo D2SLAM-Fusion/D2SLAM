@@ -43,14 +43,22 @@ namespace D2FrontEnd {
         nh.param<bool>("enable_pub_local_frame", enable_pub_local_frame, false);
         nh.param<bool>("enable_sub_remote_frame", enable_sub_remote_frame, false);
         nh.param<std::string>("output_path", OUTPUT_PATH, "");
+        
         enable_perf_output = (int) fsSettings["enable_perf_output"];
+        enbale_detailed_output = (int) fsSettings["enbale_detailed_output"];
+        enbale_speed_ouptut = (int) fsSettings["enbale_speed_ouptut"];
+
         print_network_status = (int) fsSettings["print_network_status"];
         verbose = (int) fsSettings["verbose"];
         ftconfig->write_to_file = (int) fsSettings["write_tracking_image_to_file"];
 
+        //
+        use_gpu_feature_tracking = (int)fsSettings["use_gpu_feature_tracking"];
+        use_gpu_good_feature_extraction = (int)fsSettings["use_gpu_good_feature_extraction"];
+
         //Loopcam configs
-        loopcamconfig->superpoint_max_num = (int) fsSettings["max_superpoint_cnt"];
         total_feature_num = (int) fsSettings["max_cnt"];
+        loopcamconfig->superpoint_max_num = (int) fsSettings["max_superpoint_cnt"];
         loopcamconfig->DEPTH_FAR_THRES = fsSettings["depth_far_thres"];
         loopcamconfig->DEPTH_NEAR_THRES = fsSettings["depth_near_thres"];
         loopcamconfig->show = (int) fsSettings["show_feature_extraction"];
@@ -227,6 +235,7 @@ namespace D2FrontEnd {
         enable_undistort_image = loopcamconfig->enable_undistort_image = (int) fsSettings["enable_undistort_image"];
         width_undistort = (int) fsSettings["width_undistort"];
         height_undistort = (int) fsSettings["height_undistort"];
+        image_frequency = (int) fsSettings["image_freq"];
         undistort_fov = fsSettings["undistort_fov"];
         width = (int) fsSettings["image_width"];
         height = (int) fsSettings["image_height"];

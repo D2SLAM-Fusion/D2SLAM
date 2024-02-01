@@ -67,6 +67,10 @@ struct D2FrontendParams {
     bool enable_pca_superpoint = false;
     bool enable_pca_netvlad = false;
 
+    //tracking feature and extract use cpu or gpu
+    bool use_gpu_good_feature_extraction = false;
+    bool use_gpu_feature_tracking = false;
+    
     std::string pca_netvlad = "";
 
     double min_movement_keyframe = 0.3;
@@ -86,6 +90,8 @@ struct D2FrontendParams {
     bool enable_sub_remote_frame;
     bool send_whole_img_desc;
     bool enable_perf_output = false;
+    bool enbale_speed_ouptut = false;
+    bool enbale_detailed_output = false;
     bool show = false;
     bool debug_plot_superpoint_features = false;
     bool enable_loop = true;
@@ -98,6 +104,7 @@ struct D2FrontendParams {
     std::vector<std::string> image_topics, depth_topics;
 
     //Extrinsics and camera configs
+    int image_frequency = 20;
     double undistort_fov = 200;
     int width_undistort = 800;
     int height_undistort = 400;
