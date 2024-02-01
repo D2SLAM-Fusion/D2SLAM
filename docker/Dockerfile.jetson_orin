@@ -19,4 +19,3 @@ RUN   export PATH=/usr/local/cuda/bin:$PATH && \
             -DTorch_DIR=/usr/local/lib/python3.8/dist-packages/torch/share/cmake/Torch && \
       catkin build &&\
       echo "source ${SWARM_WS}/devel/setup.bash" >> ~/.bashrc
-      

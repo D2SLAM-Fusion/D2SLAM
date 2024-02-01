@@ -30,6 +30,8 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
 )
 
+catkin_package()
+
 add_definitions("-D USE_ONNX")
 
 include_directories(
