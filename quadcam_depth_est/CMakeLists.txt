@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
-add_compile_options(-Wno-deprecated-declarations -Wno-reorder  -Wno-format -Wno-sign-compare)
+add_compile_options(-Wno-deprecated-declarations -Wno-deprecated -Wno-reorder  -Wno-format -Wno-sign-compare)
 
 find_package(catkin REQUIRED)
 SET("OpenCV_DIR"  "/usr/local/share/OpenCV/")
