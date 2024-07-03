@@ -1,11 +1,15 @@
-#include "../include/quadcam_depth_est_trt.hpp"
+#include "quadcam_depth_est_trt.hpp"
 #include <d2common/fisheye_undistort.h>
 #include <image_transport/image_transport.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <d2frontend/d2frontend_params.h>
-#include "../include/pcl_utils.hpp"
+#include <NvInferRuntime.h>
+#include <spdlog/spdlog.h>
+
+#include "pcl_utils.hpp"
+
 
 namespace D2FrontEnd {
     std::pair<camodocal::CameraPtr, Swarm::Pose> readCameraConfig(const std::string & camera_name, const YAML::Node & config);
@@ -46,6 +50,7 @@ QuadcamDepthEstTrt::QuadcamDepthEstTrt(ros::NodeHandle & nh):nh_(nh){
   this->inference_rate_ = std::make_unique<ros::Rate>(ros::Rate(this->fps_));
   this->publish_rate_ = std::make_unique<ros::Rate>(ros::Rate(this->fps_));
   this->cnn_input_rgb_ = config["cnn_input_rgb"].as<bool>();
+  
   this->loadVirtualCameras(config,config_dir);
   if(config["image_topic"].IsDefined()){
     this->image_topic_ = config["image_topic"].as<std::string>();
@@ -57,10 +62,11 @@ QuadcamDepthEstTrt::QuadcamDepthEstTrt(ros::NodeHandle & nh):nh_(nh){
   for(int i = 0 ; i<kCamerasNum; i++){
     this->output_tensors_[i] = cv::Mat(this->height_,this->width_,CV_32F);
   }
+  this->onnx_path_ = config["onnx_path"].as<std::string>();
   this->trt_engine_path_ = config["trt_engine_path"].as<std::string>();
-  printf("[QuadcamDepthEstTrt]: load hitnet from %s\n",trt_engine_path_.c_str());
+
   this->hitnet_ = std::make_unique<TensorRTHitnet::HitnetTrt>(true);
-  this->hitnet_->init(trt_engine_path_, 4);
+  this->hitnet_->init(onnx_path_,trt_engine_path_, 4);
 
   //subscribe
   image_transport::TransportHints hints(this->image_format_, ros::TransportHints().tcpNoDelay(true));

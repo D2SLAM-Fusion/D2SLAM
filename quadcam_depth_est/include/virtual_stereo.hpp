@@ -1,5 +1,6 @@
 #include <swarm_msgs/Pose.h>
 #include <opencv2/cudaimgproc.hpp>
+
 #pragma once
 namespace camodocal {
 class Camera;

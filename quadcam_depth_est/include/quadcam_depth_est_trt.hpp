@@ -75,6 +75,7 @@ class QuadcamDepthEstTrt{
   bool cnn_input_rgb_ = false;
 
   int32_t fps_ = 10;
+  std::string onnx_path_;
   std::string trt_engine_path_;
   
   std::thread raw_image_process_thread_;

@@ -1,15 +1,14 @@
-#include "../include/virtual_stereo.hpp"
-#include <d2common/fisheye_undistort.h>
+#include "virtual_stereo.hpp"
+
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudastereo.hpp>
 #include <opencv2/calib3d.hpp>
-#include "hitnet_onnx.hpp"
-#include "crestereo_onnx.hpp"
 #include <camodocal/camera_models/CataCamera.h>
 #include <opencv2/ccalib/omnidir.hpp>
-#include "../include/quadcam_depth_est_trt.hpp"
+
+#include "d2common/fisheye_undistort.h"
 
 namespace D2QuadCamDepthEst {
 VirtualStereo::VirtualStereo(int _cam_idx_a, int _cam_idx_b, 
@@ -317,20 +316,7 @@ cv::Mat VirtualStereo::estimateDisparityOCV(const cv::Mat & left, const cv::Mat 
 }
 
 cv::Mat VirtualStereo::estimateDisparity(const cv::Mat & left, const cv::Mat & right) {
-    if (config.use_cnn && (hitnet != nullptr || crestereo!=nullptr)) {
-        if (hitnet!=nullptr) {
-            if (left.channels() == 3) {
-                cv::Mat left_gray;
-                cv::cvtColor(left, left_gray, cv::COLOR_BGR2GRAY);
-                return estimateDisparity(left_gray, right);
-            }
-            return hitnet->inference(left, right);
-        } else {
-            return crestereo->inference(left, right);
-        }
-    } else {
-        return estimateDisparityOCV(left, right);
-    }
+    return estimateDisparityOCV(left, right);
 }
 
 }

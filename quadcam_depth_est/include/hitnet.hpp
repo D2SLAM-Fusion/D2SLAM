@@ -9,7 +9,7 @@
 #include <vector>
 #include <NvOnnxParser.h>
 #include <stdint.h>
-#include "trt_buffers.h"
+#include "tensorrt_utils/buffers.h"
 
 constexpr char kInputTensorName[] = "input";
 constexpr char kOutputTensorName[] = "reference_output_disparity";
@@ -44,10 +44,11 @@ class HitnetExcutor{
   int32_t copyBack();
   int32_t synchronize();
   int32_t getOutput(cv::Mat& output);
+  
  private:
   std::shared_ptr<nvinfer1::ICudaEngine> engine_ptr_ = nullptr;
   nvinfer1::IExecutionContext* nv_context_ptr_ = nullptr;
-  std::shared_ptr <CudaMemoryManager::BufferManager> buffer_manager_ptr_; //TODO: risky
+  std::shared_ptr <tensorrt_buffer::BufferManager> buffer_manager_ptr_; //TODO: risky
   cudaStream_t stream_;
   std::string input_tensor_name_ = "input";
   std::string output_tensor_name_ = "output";
@@ -61,13 +62,15 @@ class HitnetTrt{
  public:
   HitnetTrt(bool show_info):show_info_(show_info){};
   ~HitnetTrt();
-  int32_t init(const std::string& engine_filepath, int32_t stream_number);
+  int32_t init(const std::string& onnx_model_path, const std::string& trt_engine_path, int32_t stream_number);
   int32_t doInference(const cv::Mat input[4]);//input  4 1x2x240x320 bcwh output 4 1x1x240x320 disparity
   int32_t getOutput(cv::Mat output[4]);
  private:
+  int32_t deserializeEngine(const std::string& trt_engine_path);
+  int32_t buildEngine(const std::string& onnx_model_path, const std::string& trt_engine_path);
+
   int32_t stream_number_ = 4;
   std::vector<HitnetExcutor> executors_;
-  nvinfer1::IRuntime* nv_runtime_ptr_ = nullptr;
   std::shared_ptr<nvinfer1::ICudaEngine> nv_engine_ptr_ = nullptr;
   HitnetLogger logger_;
   bool show_info_;

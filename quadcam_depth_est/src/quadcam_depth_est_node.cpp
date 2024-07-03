@@ -1,6 +1,5 @@
 #include <ros/ros.h>
-#include "quadcam_depth_est.hpp"
-#include "../include/quadcam_depth_est_trt.hpp"
+#include "quadcam_depth_est_trt.hpp"
 
 int main(int argc, char** argv)
 {

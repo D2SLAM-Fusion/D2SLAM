@@ -3,10 +3,8 @@ cnn_int8: false
 cnn_fp16: true
 cnn_use_tensorrt: true
 cnn_type: "hitnet"
-# cnn_type: "crestereo"
-cnn_model_path: "/root/swarm_ws/src/configs-drone-swarm/drones/stereo_depth_est_models/model_float16_quant_opt.onnx"
-cnn_quant_path: ""
-trt_engine_path: "/root/swarm_ws/src/configs-drone-swarm/drones/stereo_depth_est_models/model_float16_quant_opt_onnx.trt"
+onnx_path: "/root/swarm_ws/src/configs-drone-swarm/drones/stereo_depth_est_models/model_float16_quant_opt.onnx"
+trt_engine_path: "/root/swarm_ws/src/configs-drone-swarm/drones/stereo_depth_est_models/model_float16_quant_opt_onnx_test.trt"
 cnn_input_rgb : false
 enable_texture: false
 width: 320
