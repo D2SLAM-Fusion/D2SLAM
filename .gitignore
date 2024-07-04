@@ -10,7 +10,6 @@ d2comm/build/
 d2pgo/scripts/notebooks/.ipynb_checkpoints/
 d2pgo/scripts/notebooks/*.png
 quadcam_depth_est/build/
-models/*.onnx
 models/*.pb
 models/*.trt
 models/*.engine
@@ -18,7 +17,6 @@ models/*.profile
 model.zip
 *.engine
 *.profile
-models/
 data_analysis/.ipynb_checkpoints/
 d2pgo/posegraph-graphviz.*
 d2pgo/scripts/notebooks/posegraph-graphviz.*
