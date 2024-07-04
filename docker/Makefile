@@ -9,8 +9,8 @@ help:
 	@echo "   1. make clean              - remove all images"
 	@echo ""
 
-pc:
-	@docker build  -t d2slam:pc -f ./Dockerfile ..
+x86:
+	@docker build  -t d2slam:x86 -f ./Dockerfile ..
 
 jetson_orin:
 	@docker build  -t d2slam:jetson_orin -f ./Dockerfile.jetson ..

@@ -22,7 +22,6 @@ if [ ${START_OPTION} == 1 ]; then
   docker run -it --rm --runtime=nvidia --gpus all  --net=host \
     -v ${CURRENT_DIR}:${SWARM_WS}/src/D2SLAM \
     -v ${CONFIGS}:${SWARM_WS}/src/configs-drone-swarm \
-    -v ${NN_MODELS}:${SWARM_WS}/src/NNmodels_generator \
     -v /dev/:/dev/  -v ${DATA_SET}:/data/ --privileged -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix  --name="d2slam_container" ${DOCKERIMAGE} /bin/bash 
 else
   echo "Start docker container for image transportation only"

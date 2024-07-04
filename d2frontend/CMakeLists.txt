@@ -30,6 +30,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(opengv REQUIRED)
 find_package(CUDA REQUIRED)
 
+
 SET("OpenCV_DIR"  "/usr/local/share/OpenCV/")
 set(Torch_DIR "$ENV{HOME}/source/libtorch/share/cmake/Torch" CACHE STRING "Path of libtorch")
 set(TORCH_INSTALL_PREFIX "$ENV{HOME}/source/libtorch" CACHE STRING "Path of libtorch")
@@ -130,6 +131,7 @@ target_link_libraries(loop_cnn opencv_dnn
   nvinfer
   nvinfer_plugin
   nvonnxparser
+  spdlog
 )
 
 add_executable(loop_tensorrt_test
@@ -143,7 +145,8 @@ target_link_libraries(loop_tensorrt_test
   ${TORCH_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES})
+  ${Boost_LIBRARIES}
+)
 
 add_executable(camera_undistort_test
   tests/camera_undistort_test.cpp

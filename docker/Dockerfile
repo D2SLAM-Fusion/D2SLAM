@@ -1,6 +1,6 @@
 # FROM nvidia/cuda:11.6.1-cudnn8-devel-ubuntu20.04
-# FROM nvcr.io/nvidia/tensorrt:22.08-py3
-FROM nvcr.io/nvidia/tensorrt:23.02-py3
+FROM nvcr.io/nvidia/tensorrt:22.08-py3
+# FROM nvcr.io/nvidia/tensorrt:23.02-py3
 ARG CERES_VERSION=2.1.0
 ARG CMAKE_VERSION=3.23.1
 ARG ONNX_VERSION=1.12.1
